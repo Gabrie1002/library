@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Annotated, List, Dict
-from src.library_catalog.repository import BookRepository
-from src.library_catalog.models import SBook
+from app.repository.repository import BookRepository
+from app.models.models import SBook
+from app.core.config import ERROR_404
 
 router = APIRouter(
     prefix='/books',
@@ -22,7 +23,7 @@ async def get_book_id(
 ) -> SBook:
     book = await repo.get_book(book_id)
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(status_code=404, detail=ERROR_404)
     return book
 
 
@@ -47,7 +48,7 @@ async def update_book_id(
         raise HTTPException(status_code=400, detail="ID in path and body must match")
     updated_book = await repo.update_book(book_id, book)
     if not updated_book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(status_code=404, detail=ERROR_404)
     return updated_book
 
 
@@ -58,7 +59,7 @@ async def delete_book_id(
 ) -> Dict:
     success = await repo.delete_book(book_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(status_code=404, detail=ERROR_404)
     return {"message": "Book deleted successfully"}
 
 
@@ -69,7 +70,7 @@ async def enrich_book(
 ) -> SBook:
     book = await repo.get_book(book_id)
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(status_code=404, detail=ERROR_404)
 
     enriched_data = await repo.open_library.enrich_book_data(
         title=book.title,
