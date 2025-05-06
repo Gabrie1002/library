@@ -2,7 +2,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Annotated, List, Dict
 from app.repository.repository import BookRepository
 from app.models.models import SBook
-from app.core.config import ERROR_404
+from app.core.config import ERROR_404, ERROR_500
+from app.dependencies.dependencies import get_book_service
+from app.services.book_service import BookService
+
 
 router = APIRouter(
     prefix='/books',
@@ -10,76 +13,107 @@ router = APIRouter(
 )
 
 
-@router.get('', name='Получение всех книг')
+@router.get(
+    '',
+    name='Получение всех книг',
+    response_model=List[SBook],
+    responses={
+        200: {"description": "Список всех книг"},
+        500: {"description": ERROR_500},
+    }
+)
 async def get_books(
         repo: BookRepository = Depends()
 ) -> List[SBook]:
     return await repo.get_all_books()
 
 
-@router.get('/{book_id}', name='Получение книги по id')
+@router.get(
+    '/{book_id}',
+    name='Получение книги по id',
+    response_model=SBook,
+    responses={
+        200: {"description": "Книга полученная по id"},
+        404: {"description": ERROR_404},
+        500: {"description": ERROR_500},
+    }
+)
 async def get_book_id(
-        book_id: int, repo: BookRepository = Depends()
+    book_id: int,
+    service: BookService = Depends(get_book_service)
 ) -> SBook:
-    book = await repo.get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail=ERROR_404)
-    return book
+    return await service.get_book(book_id)
 
 
-@router.post('', name='Добавление книги')
+@router.post(
+    '',
+    name='Добавление книги',
+    response_model=SBook,
+    responses={
+        201: {"description": "Книга создана успешно"},
+        400: {"description": "Book with this ID already exists"},
+        500: {"description": ERROR_500},
+    }
+)
 async def add_book(
-        book: Annotated[SBook, Depends()],
-        repo: BookRepository = Depends()
+        book: SBook,
+        service: BookService = Depends(get_book_service)
 ) -> SBook:
-    existing_book = await repo.get_book(book.id)
-    if existing_book:
-        raise HTTPException(status_code=400, detail="Book with this ID already exists")
-    return await repo.add_book(book)
+    return await service.create_book(book)
 
 
-@router.put('/{book_id}', name='Внести изменения для книги')
+@router.put(
+    '/{book_id}',
+    name='Внести изменения для книги',
+    response_model=SBook,
+    responses={
+        201: {"description": "Данные успешно изменены"},
+        400: {"description": "ID in path and body must match"},
+        404: {"description": ERROR_404},
+        500: {"description": ERROR_500},
+    }
+)
 async def update_book_id(
         book_id: int,
-        book: Annotated[SBook, Depends()],
-        repo: BookRepository = Depends()
+        book: SBook,
+        service: BookService = Depends(get_book_service)
 ) -> SBook:
     if book_id != book.id:
         raise HTTPException(status_code=400, detail="ID in path and body must match")
-    updated_book = await repo.update_book(book_id, book)
-    if not updated_book:
-        raise HTTPException(status_code=404, detail=ERROR_404)
-    return updated_book
+    return await service.update_book(book_id, book)
 
 
-@router.delete('/{book_id}', name='Удаление книги')
+@router.delete(
+    '/{book_id}',
+    name='Удаление книги',
+    responses={
+        204: {"description": "Книга успешно удалена"},
+        404: {"description": ERROR_404},
+        500: {"description": ERROR_500},
+    }
+)
 async def delete_book_id(
         book_id: int,
-        repo: BookRepository = Depends()
+        service: BookService = Depends(get_book_service)
 ) -> Dict:
-    success = await repo.delete_book(book_id)
-    if not success:
-        raise HTTPException(status_code=404, detail=ERROR_404)
-    return {"message": "Book deleted successfully"}
+    await service.delete_book(book_id)
+    return {"message": "Книга успешно удалена"}
 
 
-@router.post("/books/{book_id}/enrich")
+@router.get(
+    '/{book_id}/enrich',
+    name='Наполнение информации о книге',
+    response_model=SBook,
+    responses={
+        200: {"description": "Информация успешно наполнена"},
+        404: {"description": ERROR_404},
+        500: {"description": ERROR_500},
+    }
+)
 async def enrich_book(
         book_id: int,
-        repo: BookRepository = Depends()
+        service: BookService = Depends(get_book_service)
 ) -> SBook:
-    book = await repo.get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail=ERROR_404)
+    return await service.enrich_book(book_id)
 
-    enriched_data = await repo.open_library.enrich_book_data(
-        title=book.title,
-        author=book.author
-    )
-
-    updated_book = await repo.update_book(
-        book_id,
-        {**book.dict(), **enriched_data}
-    )
-    return updated_book
 

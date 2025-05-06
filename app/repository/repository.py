@@ -3,7 +3,7 @@ from typing import Dict, Optional, List, Tuple, Union
 import json
 from app.models.models import SBook
 from app.core.logger import log_exceptions
-from app.services.book_service import OpenLibraryService, OpenLibraryClient
+from app.services.openlibrary_service import OpenLibraryService, OpenLibraryClient
 from app.services.jsonbin_service import JsonBinClient
 load_dotenv()
 
