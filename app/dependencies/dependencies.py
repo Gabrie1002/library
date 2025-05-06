@@ -7,6 +7,6 @@ async def get_repository():
     return BookRepository()
 
 
-def get_book_service(repo: BookRepository = Depends()) -> BookService:
+def get_book_service(repo: BookRepository = Depends(get_repository)) -> BookService:
     return BookService(repo)
 
